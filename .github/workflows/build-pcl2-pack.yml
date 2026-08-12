@@ -59,14 +59,22 @@ jobs:
       - name: NeoForge server smoke test
         shell: bash
         run: |
-          set -euxo pipefail
+          set -u
+          mkdir -p build/pcl2
           cd build/server
           set +e
           timeout 150s java @user_jvm_args.txt @libraries/net/neoforged/neoforge/21.1.233/unix_args.txt nogui > server-smoke.log 2>&1
           code=$?
           set -e
-          cat server-smoke.log
-          if grep -Eiq 'Mod loading has failed|Failed to load|Exception in thread "main"|Could not load|Errors during KubeJS startup' server-smoke.log; then
+          {
+            echo '===== FILTERED FATAL / DEPENDENCY / KUBEJS LINES ====='
+            grep -Ein 'Mod loading has failed|Failed to load|Exception|Caused by|ERROR|requires|missing|KubeJS|Mixin|NoClassDefFoundError|ClassNotFoundException|LoadingFailedException' server-smoke.log | tail -n 260 || true
+            echo
+            echo '===== LAST 350 LOG LINES ====='
+            tail -n 350 server-smoke.log || true
+          } > ../pcl2/SMOKE_FATAL.txt
+          cat ../pcl2/SMOKE_FATAL.txt
+          if grep -Eiq 'Mod loading has failed|Failed to load|Exception in thread "main"|Could not load|Errors during KubeJS startup|LoadingFailedException' server-smoke.log; then
             echo 'Smoke test found fatal mod/KubeJS loading errors' >&2
             exit 1
           fi
@@ -91,13 +99,16 @@ jobs:
           Path('build/pcl2/SMOKE_TEST_REPORT.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
           PY
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload resolver and smoke-test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: wildlands-pcl2-resolved-lock
           path: |
             build/pcl2/resolved-modrinth-files.json
             build/pcl2/modset-lock.json
             build/pcl2/SMOKE_TEST_REPORT.json
+            build/pcl2/SMOKE_FATAL.txt
             build/server/server-smoke.log
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
