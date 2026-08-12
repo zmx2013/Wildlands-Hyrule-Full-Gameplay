@@ -1,0 +1,74 @@
+name: LOTM Ultra - Rebuild Dev Environment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forge-devdeps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Resolve Forge 1.20.1 official mappings
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 5 -o /tmp/forge-mdk.zip https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.22/forge-1.20.1-47.4.22-mdk.zip
+          mkdir -p /tmp/mdk
+          cd /tmp/mdk
+          unzip -q /tmp/forge-mdk.zip
+          chmod +x gradlew
+          ./gradlew --no-daemon compileJava
+          mkdir -p /tmp/devdeps
+          cp -a "$HOME/.gradle/caches/forge_gradle/minecraft_user_repo" /tmp/devdeps/ || true
+          cp -a "$HOME/.gradle/caches/modules-2/files-2.1/net.minecraftforge/forge" /tmp/devdeps/forge-module || true
+          find /tmp/devdeps -type f -name '*.jar' -print
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-1.20.1-47.4.22-devdeps
+          path: /tmp/devdeps
+          compression-level: 3
+          retention-days: 30
+
+  forge-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Forge server
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/forge-server
+          curl -fL --retry 5 -o /tmp/forge-installer.jar https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.22/forge-1.20.1-47.4.22-installer.jar
+          java -jar /tmp/forge-installer.jar --installServer /tmp/forge-server
+          printf 'eula=true\n' > /tmp/forge-server/eula.txt
+          printf 'online-mode=false\n' > /tmp/forge-server/server.properties
+          find /tmp/forge-server -maxdepth 3 -type f | sort | head -200
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-1.20.1-47.4.22-server
+          path: /tmp/forge-server
+          compression-level: 3
+          retention-days: 30
+
+  java17:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify toolchain
+        shell: bash
+        run: |
+          java -version
+          javac -version
+          echo "JAVA_HOME=$JAVA_HOME"
