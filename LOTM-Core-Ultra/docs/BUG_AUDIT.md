@@ -66,6 +66,28 @@
 56. **BUG-056 — Spirit vision/body control are treated as transient on death but persisted across normal logout/restart.** Login restores active IDs without startup validation/onEnable, creating inconsistent lifecycle semantics.
 57. **BUG-057 — Flame control bypasses normal PvP/player-attack damage handling.** It directly calls `setSecondsOnFire()` on a selected LivingEntity, including players, unlike other offensive skills that use `playerAttack`/`hurt`.
 58. **BUG-058 — Illusion clears targets of every nearby Mob, not only mobs targeting the caster.** It can disrupt other players' combat/neutral or tamed-mob targeting.
+59. **BUG-059 — Flame-control extinguish destroys the target block instead of extinguishing it.** The sneak-extinguish path calls `Level.destroyBlock(pos, false)`; campfires can be deleted wholesale and false-positive `fire_*` matches can also be removed.
+60. **BUG-060 — Precision/laboratory right-click handlers do not consume/cancel the interaction.** One click can fall through to offhand/block interaction, allowing double processing or opening another block UI after custom handling.
+61. **BUG-061 — Active dowsing sessions are player-bound, not rod-bound.** Tick later finds the first rod in mainhand/offhand/inventory and can write feedback/state to a different rod when multiple differently tuned rods exist.
+62. **BUG-062 — Physical-sample auto-attunement is not wired.** `DowsingTargetCatalog.fromSample()` has the intended mappings and the tooltip advertises the feature, but there are no gameplay call sites.
+63. **BUG-063 — EXPLORE target categories are fake choices.** `mystic_anomaly`, `rare_resource`, and `danger` alter the stored target string but the server executes the same important-trace/Monster/rare-block search regardless.
+64. **BUG-064 — Arbitrary nonexistent `lotm_core:*` dowsing targets are accepted as valid.** The server reports successful attunement even when no block/item/entity exists, leaving the rod permanently silent.
+65. **BUG-065 — Minimap radar/tactical threat is an entity X-ray.** It has no line-of-sight, spirit-vision, sequence, discovery, or perception gate, so entities behind walls/underground are directly revealed.
+66. **BUG-066 — Hostile radar/tactical classification uses `Monster` instead of the broader hostile `Enemy` contract.** Ghasts, phantoms, slimes, Ender Dragon and similar hostile entities can be omitted.
+67. **BUG-067 — Base radar classifies every non-Player/non-Monster/non-Animal entity as a generic mob.** Dropped items, arrows, XP orbs, boats and other nonliving entities can pollute counts/markers.
+68. **BUG-068 — `mystic_distiller` and `mystic_extractor` have no block loot tables.** Breaking these survival-placeable machines does not return the block item.
+69. **BUG-069 — `MagicianAbilityService` relies on SRG-only string reflection for multiple gameplay operations.** String literals are not remapped in ForgeGradle official userdev, so dev `runClient/runServer` and production reobf JAR have materially different behavior; damage, LOS, look-vector, inventory/component paths can silently fall back or fail.
+70. **BUG-070 — Tactical client death detection is also SRG-string-only in development mappings.** `LocalPlayer.m_21223_()` fails silently in official userdev, so dev-client death waypoint behavior differs from production.
+71. **BUG-071 — Dream divination has no actual target input/binding.** The only notebook call prepares with an empty target; TARGET falls back to nearby hostile-world observation rather than a chosen person/item/place.
+72. **BUG-072 — Even a nonempty Dream target does not participate in observation.** `observe(player, question)` generates the world observation before the supplied target is injected into context, so the revealed content can describe nearby unrelated state.
+73. **BUG-073 — Changing dowsing target/mode in the selector does not update a live server Session.** Rod NBT is changed/deactivated while `Session.active` can keep draining spirituality and scanning the old target/mode, then overwrite rod feedback with stale results.
+74. **BUG-074 — The same `mystic_altar` is wired to two independent mixing systems.** Precision `RightClickBlock` handling can fall through to `MysticAltarBlock.use()` and open the legacy 5-slot altar GUI/BlockEntity; the two state stores do not share potion progress.
+75. **BUG-075 — Radar/tactical 512-entity scan budget is consumed before distance filtering.** Iteration order is not nearest-first, so far/irrelevant entities can exhaust the cap and hide nearby threats in high-entity scenes.
+76. **BUG-076 — Tactical threat score largely ignores vertical separation.** Main distance uses `hypot(dx,dz)` and vertical distance only affects a small bonus; enemies tens of blocks directly above/below can rank as near-max threats.
+77. **BUG-077 — `ClientBeyonderState` is not reset on disconnect/world unload.** Previous character pathway/sequence/spirituality/mental state can leak into HUD/overlay/wheel state until the next server sync.
+78. **BUG-078 — Tactical Breadcrumb `TRAIL` is not cleared when leaving a world.** It only clears on dimension-string change, so two saves both in `minecraft:overworld` can display the previous world's breadcrumb trail in the same client process.
+79. **BUG-079 — Interrupted/failed sleep leaves a hidden pending Dream.** Wake cleanup clears only the notebook's visible prepared tag, not the server pending question/target; a later unrelated successful sleep can resolve the stale dream.
+80. **BUG-080 — Dream overlay is client-inferred instead of server-completion-authoritative.** Local sleep→wake plus notebook state can show the veil for an interrupted dream, while server cleanup synchronization can race and suppress the veil for a genuinely completed dream.
 
 ## Checked but not currently classified as bugs
 
@@ -76,6 +98,9 @@
 - Ability C2S IDs are server-whitelisted and `AbilityAccess.has()` rechecks sequence access.
 - Cooldown clocks use game-time rather than day-time, so `/time set` is not a simple bypass.
 - Structure trace cache clears dimension data on level unload.
+- Tactical mystical-mode translation currently has no numeric placeholder, so the internally computed signal value is not displayed as an exact backend number.
+- Dowsing ROUTE `SHORTEST` / `BALANCED` / `SAFEST` are behaviorally distinct; route planning changes hazard weighting and SAFEST has higher spirituality cost.
+- Four custom creature material drop paths exist in Java and the required S9/S8/S7 equipment/tool recipes are present.
 
 ## Audit state
 
