@@ -1,22 +1,25 @@
-name: LOTM Fetch CFR
+name: LOTM Fetch Decompilers
 on:
   push:
     branches: [ lotm-tools-temp ]
 jobs:
-  fetch-cfr:
+  fetch-tools:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Download CFR 0.152
+      - name: Download CFR and Vineflower
         shell: bash
         run: |
           set -euxo pipefail
-          curl -fL --retry 5 -o /tmp/cfr-0.152.jar https://repo1.maven.org/maven2/org/benf/cfr/0.152/cfr-0.152.jar
-          java -jar /tmp/cfr-0.152.jar --version
-          sha256sum /tmp/cfr-0.152.jar
-      - name: Upload CFR
+          mkdir -p /tmp/decompilers
+          curl -fL --retry 5 -o /tmp/decompilers/cfr-0.152.jar https://repo1.maven.org/maven2/org/benf/cfr/0.152/cfr-0.152.jar
+          curl -fL --retry 5 -o /tmp/decompilers/vineflower-1.11.1.jar https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.1/vineflower-1.11.1.jar
+          java -jar /tmp/decompilers/cfr-0.152.jar --version
+          java -jar /tmp/decompilers/vineflower-1.11.1.jar --help >/dev/null
+          sha256sum /tmp/decompilers/*.jar
+      - name: Upload decompilers
         uses: actions/upload-artifact@v4
         with:
-          name: cfr-0.152
-          path: /tmp/cfr-0.152.jar
+          name: lotm-decompilers
+          path: /tmp/decompilers
           retention-days: 1
