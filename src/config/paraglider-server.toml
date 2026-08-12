@@ -1,0 +1,22 @@
+ascendingWinds = true
+paraglidingSpeed = 1.05
+paragliderDurability = 0
+
+[spiritOrbs]
+elderGuardianDropsSpiritOrb = true
+spawnerSpiritOrbDrops = 1.0
+trialSpiritOrbDrops = 1.0
+ominousTrialSpiritOrbDrops = 2.0
+spiritOrbLoots = true
+
+[vessels]
+startingHearts = 3
+maxHeartContainers = 17
+maxStamina = 3000
+startingStamina = 1000
+maxStaminaVessels = 10
+staminaIncreasePerVessel = 200
+
+[stamina]
+paraglidingConsumesStamina = true
+runningAndSwimmingConsumesStamina = true

@@ -1,0 +1,6 @@
+[features]
+spiritOrbGens = true
+heartContainers = true
+staminaVessels = true
+structures = false
+villageStructures = false

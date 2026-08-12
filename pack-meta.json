@@ -1,0 +1,7 @@
+{
+  "name": "Wildlands: Hyrule Full Gameplay Edition",
+  "version": "2.0.0",
+  "minecraft": "1.21.1",
+  "loader": "NeoForge",
+  "loader_version": "21.1.233"
+}
