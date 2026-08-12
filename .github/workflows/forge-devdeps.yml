@@ -1,0 +1,34 @@
+name: Forge 1.20.1 Dev Dependencies
+on:
+  push:
+    branches: [ forge-devdeps-temp ]
+jobs:
+  prepare-devdeps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download Forge MDK and resolve official mappings
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 5 -o /tmp/forge-mdk.zip https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.22/forge-1.20.1-47.4.22-mdk.zip
+          mkdir -p /tmp/mdk
+          cd /tmp/mdk
+          unzip -q /tmp/forge-mdk.zip
+          chmod +x gradlew
+          ./gradlew --no-daemon compileJava
+          echo '=== minecraft_user_repo ==='
+          find "$HOME/.gradle/caches/forge_gradle/minecraft_user_repo" -type f -name '*.jar' -print || true
+          mkdir -p /tmp/devdeps
+          cp -a "$HOME/.gradle/caches/forge_gradle/minecraft_user_repo" /tmp/devdeps/ || true
+          cp -a "$HOME/.gradle/caches/modules-2/files-2.1/net.minecraftforge/forge" /tmp/devdeps/forge-module || true
+      - name: Upload mapped development dependencies
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-1.20.1-47.4.22-devdeps
+          path: /tmp/devdeps
+          compression-level: 3
+          retention-days: 1
