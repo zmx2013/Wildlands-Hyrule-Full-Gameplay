@@ -39,7 +39,7 @@ jobs:
           echo 'eula=true' > eula.txt
           mkdir -p mods kubejs/startup_scripts kubejs/server_scripts config
 
-      - name: Assemble server-compatible mod set and Wildlands scripts
+      - name: Assemble server-compatible mod set and all Wildlands scripts
         shell: bash
         run: |
           set -euxo pipefail
@@ -55,6 +55,8 @@ jobs:
           cp -f src/kubejs/startup_scripts/*.js build/server/kubejs/startup_scripts/ || true
           cp -f src/kubejs/server_scripts/*.js build/server/kubejs/server_scripts/ || true
           cp -f src/config/* build/server/config/ || true
+          echo 'Server scripts under test:'
+          find build/server/kubejs -type f -maxdepth 3 -print | sort
 
       - name: NeoForge server smoke test
         shell: bash
@@ -68,13 +70,13 @@ jobs:
           set -e
           {
             echo '===== FILTERED FATAL / DEPENDENCY / KUBEJS LINES ====='
-            grep -Ein 'Mod loading has failed|Failed to load|Exception|Caused by|ERROR|requires|missing|KubeJS|Mixin|NoClassDefFoundError|ClassNotFoundException|LoadingFailedException' server-smoke.log | tail -n 260 || true
+            grep -Ein 'Mod loading has failed|Failed to load|Exception|Caused by|ERROR|requires|missing|KubeJS|Mixin|NoClassDefFoundError|ClassNotFoundException|LoadingFailedException|Unknown event' server-smoke.log | tail -n 320 || true
             echo
-            echo '===== LAST 350 LOG LINES ====='
-            tail -n 350 server-smoke.log || true
+            echo '===== LAST 400 LOG LINES ====='
+            tail -n 400 server-smoke.log || true
           } > ../pcl2/SMOKE_FATAL.txt
           cat ../pcl2/SMOKE_FATAL.txt
-          if grep -Eiq 'Mod loading has failed|Failed to load|Exception in thread "main"|Could not load|Errors during KubeJS startup|LoadingFailedException' server-smoke.log; then
+          if grep -Eiq 'Mod loading has failed|Failed to load|Exception in thread "main"|Could not load|Errors during KubeJS startup|LoadingFailedException|Unknown event|\[KubeJS (Server|Startup)/\].*(ERROR|Error)' server-smoke.log; then
             echo 'Smoke test found fatal mod/KubeJS loading errors' >&2
             exit 1
           fi
@@ -94,7 +96,7 @@ jobs:
           report={
             'minecraft':'1.21.1','neoforge':'21.1.233','resolved_mod_files':len(lock['mods']),
             'missing_optional':lock['missing_optional'],'download_hash_verification':'PASS',
-            'neoforge_dedicated_server_smoke_test':'PASS'
+            'kubejs_registration_errors':0,'neoforge_dedicated_server_smoke_test':'PASS'
           }
           Path('build/pcl2/SMOKE_TEST_REPORT.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
           PY
