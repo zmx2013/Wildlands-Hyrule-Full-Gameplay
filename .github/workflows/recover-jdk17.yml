@@ -1,0 +1,30 @@
+name: Recover JDK 17
+on:
+  push:
+    branches:
+      - lotm-jdk17-recovery
+  workflow_dispatch:
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Pack Java 17
+        shell: bash
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+          mkdir -p out
+          tar -C "$(dirname "$JAVA_HOME")" -czf out/jdk17-linux-x64.tar.gz "$(basename "$JAVA_HOME")"
+          sha256sum out/jdk17-linux-x64.tar.gz | tee out/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jdk17-linux-x64
+          path: out/*
+          retention-days: 1
+          compression-level: 0
