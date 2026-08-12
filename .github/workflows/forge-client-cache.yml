@@ -1,0 +1,47 @@
+name: Forge 1.20.1 Client Cache
+on:
+  push:
+    branches: [ client-runtime-temp ]
+jobs:
+  prepare-client-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Xvfb
+        shell: bash
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+      - name: Prepare Forge MDK client dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 5 -o /tmp/forge-mdk.zip https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.22/forge-1.20.1-47.4.22-mdk.zip
+          rm -rf /tmp/mdk && mkdir -p /tmp/mdk
+          cd /tmp/mdk
+          unzip -q /tmp/forge-mdk.zip
+          chmod +x gradlew
+          rm -rf src/main/java src/main/resources/META-INF/mods.toml
+          timeout 180s ./gradlew --no-daemon compileJava
+          set +e
+          timeout 120s xvfb-run -a ./gradlew --no-daemon runClient > /tmp/client-prewarm.log 2>&1
+          RC=$?
+          set -e
+          echo "runClient prewarm rc=$RC"
+          tail -120 /tmp/client-prewarm.log || true
+          du -sh "$HOME/.gradle/caches" "$HOME/.gradle/wrapper" /tmp/mdk 2>/dev/null || true
+          mkdir -p /tmp/clientpack
+          cp -a /tmp/mdk /tmp/clientpack/mdk
+          mkdir -p /tmp/clientpack/gradle
+          cp -a "$HOME/.gradle/caches" /tmp/clientpack/gradle/caches
+          cp -a "$HOME/.gradle/wrapper" /tmp/clientpack/gradle/wrapper
+          cp /tmp/client-prewarm.log /tmp/clientpack/client-prewarm.log || true
+      - name: Upload offline client runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-1.20.1-47.4.22-client-runtime
+          path: /tmp/clientpack
+          compression-level: 1
+          retention-days: 1
