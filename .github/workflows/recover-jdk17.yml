@@ -19,8 +19,10 @@ jobs:
         run: |
           echo "JAVA_HOME=$JAVA_HOME"
           java -version
+          du -shL "$JAVA_HOME"
           mkdir -p out
-          tar -C "$(dirname "$JAVA_HOME")" -czf out/jdk17-linux-x64.tar.gz "$(basename "$JAVA_HOME")"
+          tar -h -C "$(dirname "$JAVA_HOME")" -czf out/jdk17-linux-x64.tar.gz "$(basename "$JAVA_HOME")"
+          ls -lh out/jdk17-linux-x64.tar.gz
           sha256sum out/jdk17-linux-x64.tar.gz | tee out/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
