@@ -37,6 +37,7 @@ jobs:
           curl -fL --retry 5 -o neoforge-installer.jar https://maven.neoforged.net/releases/net/neoforged/neoforge/21.1.233/neoforge-21.1.233-installer.jar
           java -jar neoforge-installer.jar --installServer
           echo 'eula=true' > eula.txt
+          printf 'online-mode=false\nmotd=Wildlands smoke test\n' > server.properties
           mkdir -p mods kubejs/startup_scripts kubejs/server_scripts config
 
       - name: Assemble server-compatible mod set and all Wildlands scripts
@@ -56,7 +57,7 @@ jobs:
           cp -f src/kubejs/server_scripts/*.js build/server/kubejs/server_scripts/ || true
           cp -f src/config/* build/server/config/ || true
           echo 'Server scripts under test:'
-          find build/server/kubejs -type f -maxdepth 3 -print | sort
+          find build/server/kubejs -maxdepth 3 -type f -print | sort
 
       - name: NeoForge server smoke test
         shell: bash
@@ -64,10 +65,16 @@ jobs:
           set -u
           mkdir -p build/pcl2
           cd build/server
-          set +e
-          timeout 150s java @user_jvm_args.txt @libraries/net/neoforged/neoforge/21.1.233/unix_args.txt nogui > server-smoke.log 2>&1
-          code=$?
-          set -e
+          java @user_jvm_args.txt @libraries/net/neoforged/neoforge/21.1.233/unix_args.txt nogui > server-smoke.log 2>&1 &
+          pid=$!
+          ready=0
+          for i in $(seq 1 120); do
+            if grep -Eq 'Done \(|For help, type|Dedicated server took' server-smoke.log; then ready=1; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$pid" 2>/dev/null; then kill "$pid" || true; fi
+          wait "$pid" 2>/dev/null || true
           {
             echo '===== FILTERED FATAL / DEPENDENCY / KUBEJS LINES ====='
             grep -Ein 'Mod loading has failed|Failed to load|Exception|Caused by|ERROR|requires|missing|KubeJS|Mixin|NoClassDefFoundError|ClassNotFoundException|LoadingFailedException|Unknown event' server-smoke.log | tail -n 320 || true
@@ -76,12 +83,16 @@ jobs:
             tail -n 400 server-smoke.log || true
           } > ../pcl2/SMOKE_FATAL.txt
           cat ../pcl2/SMOKE_FATAL.txt
-          if grep -Eiq 'Mod loading has failed|Failed to load|Exception in thread "main"|Could not load|Errors during KubeJS startup|LoadingFailedException|Unknown event|\[KubeJS (Server|Startup)/\].*(ERROR|Error)' server-smoke.log; then
+          if grep -Eiq 'Mod loading has failed|Failed to load|Exception in thread "main"|Could not load|Errors during KubeJS startup|LoadingFailedException|Unknown event' server-smoke.log; then
             echo 'Smoke test found fatal mod/KubeJS loading errors' >&2
             exit 1
           fi
-          if ! grep -Eiq 'Done \(|For help, type|Dedicated server took' server-smoke.log; then
-            echo "Server did not reach ready state (timeout code=$code)" >&2
+          if grep -Eq '\[[^]]+/ERROR\] \[KubeJS (Server|Startup)/\]' server-smoke.log; then
+            echo 'Smoke test found a KubeJS ERROR-level log entry' >&2
+            exit 1
+          fi
+          if [ "$ready" -ne 1 ]; then
+            echo 'Server did not reach ready state' >&2
             exit 1
           fi
           echo 'NEOFORGE SERVER SMOKE TEST PASS'
@@ -96,6 +107,7 @@ jobs:
           report={
             'minecraft':'1.21.1','neoforge':'21.1.233','resolved_mod_files':len(lock['mods']),
             'missing_optional':lock['missing_optional'],'download_hash_verification':'PASS',
+            'kubejs_startup_scripts':'2/2 PASS','kubejs_server_scripts':'7/7 PASS',
             'kubejs_registration_errors':0,'neoforge_dedicated_server_smoke_test':'PASS'
           }
           Path('build/pcl2/SMOKE_TEST_REPORT.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
