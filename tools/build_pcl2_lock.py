@@ -5,7 +5,7 @@ from pathlib import Path
 API='https://api.modrinth.com/v2'
 MC='1.21.1'
 LOADER='neoforge'
-STRICT=['kubejs','paragliders','parcool','better-combat','shoulder-surfing-reloaded']
+STRICT=['kubejs','paragliders','parcool','patchouli','better-combat','shoulder-surfing-reloaded']
 OPTIONAL=['YpPfINZw','farmers-delight','cold-sweat','sound-physics-remastered','ambientsounds','sodium','iris','immediatelyfast','modernfix','ferrite-core','entityculling','dynamic-fps','not-enough-animations','falling-leaves','presence-footsteps','make_bubbles_pop','better-mount-hud','horse-expert','zelda-hyrule-terrors']
 UA='Wildlands-Hyrule-Full-Gameplay/2.0.1 (+https://github.com/zmx2013/Wildlands-Hyrule-Full-Gameplay)'
 OUT=Path(os.environ.get('OUT_DIR','build/pcl2'))
@@ -38,8 +38,6 @@ def choose(pid):
     listed=[v for v in vs if v.get('status','listed') in ('listed','archived')]
     if listed: vs=listed
     rank={'release':0,'beta':1,'alpha':2}
-    vs.sort(key=lambda v:(rank.get(v.get('version_type'),9),-int(v.get('date_published','1970')[:4] or 1970)))
-    # API normally returns newest first; within best channel keep most recently published.
     best_type=min(rank.get(v.get('version_type'),9) for v in vs)
     candidates=[v for v in vs if rank.get(v.get('version_type'),9)==best_type]
     candidates.sort(key=lambda v:v.get('date_published',''),reverse=True)
