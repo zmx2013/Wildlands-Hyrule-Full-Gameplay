@@ -1,0 +1,63 @@
+name: Publish v2.0.0 Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'zmx2013/Wildlands-Hyrule-Full-Gameplay'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate repository
+        run: python tools/validate_repo.py
+
+      - name: Build source release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build
+          mkdir -p build/Wildlands_Hyrule_Full_Gameplay_v2.0.0
+          cp README.md LICENSE NOTICE.md CONTRIBUTING.md RELEASE_NOTES_v2.0.0.md pack-meta.json structure-counts.json build/Wildlands_Hyrule_Full_Gameplay_v2.0.0/
+          cp -R src tools docs dist build/Wildlands_Hyrule_Full_Gameplay_v2.0.0/ 2>/dev/null || true
+          cd build
+          zip -qr ../Wildlands_Hyrule_Full_Gameplay_v2.0.0-source.zip Wildlands_Hyrule_Full_Gameplay_v2.0.0
+          cd ..
+          sha256sum Wildlands_Hyrule_Full_Gameplay_v2.0.0-source.zip > Wildlands_Hyrule_Full_Gameplay_v2.0.0-source.zip.sha256
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v2.0.0 >/dev/null 2>&1; then
+            gh release upload v2.0.0 \
+              Wildlands_Hyrule_Full_Gameplay_v2.0.0-source.zip \
+              Wildlands_Hyrule_Full_Gameplay_v2.0.0-source.zip.sha256 \
+              --clobber
+          else
+            gh release create v2.0.0 \
+              Wildlands_Hyrule_Full_Gameplay_v2.0.0-source.zip \
+              Wildlands_Hyrule_Full_Gameplay_v2.0.0-source.zip.sha256 \
+              --target "${GITHUB_SHA}" \
+              --title "v2.0.0 — Full Gameplay Edition" \
+              --notes-file RELEASE_NOTES_v2.0.0.md \
+              --latest
+          fi
