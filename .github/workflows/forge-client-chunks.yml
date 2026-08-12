@@ -1,0 +1,68 @@
+name: Forge Client Runtime Chunks
+on:
+  push:
+    branches: [ client-chunks-temp ]
+jobs:
+  build-chunks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install runtime helpers
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb zstd
+      - name: Prewarm Forge 1.20.1 client and split runtime
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 5 -o /tmp/forge-mdk.zip https://maven.minecraftforge.net/net/minecraftforge/forge/1.20.1-47.4.22/forge-1.20.1-47.4.22-mdk.zip
+          rm -rf /tmp/mdk /tmp/clientpack /tmp/clientchunks
+          mkdir -p /tmp/mdk /tmp/clientpack/gradle /tmp/clientchunks
+          cd /tmp/mdk
+          unzip -q /tmp/forge-mdk.zip
+          chmod +x gradlew
+          rm -rf src/main/java src/main/resources/META-INF/mods.toml
+          timeout 180s ./gradlew --no-daemon compileJava
+          set +e
+          timeout 115s xvfb-run -a ./gradlew --no-daemon runClient > /tmp/client-prewarm.log 2>&1
+          echo "prewarm_rc=$?" >> /tmp/client-prewarm.log
+          set -e
+          cp -a /tmp/mdk /tmp/clientpack/mdk
+          cp -a "$HOME/.gradle/caches" /tmp/clientpack/gradle/caches
+          cp -a "$HOME/.gradle/wrapper" /tmp/clientpack/gradle/wrapper
+          cp /tmp/client-prewarm.log /tmp/clientpack/client-prewarm.log
+          tar -C /tmp -cf - clientpack | zstd -3 -T0 | split -b 300M -d -a 2 - /tmp/clientchunks/clientpack.tar.zst.part-
+          sha256sum /tmp/clientchunks/* | tee /tmp/clientchunks/SHA256SUMS.txt
+          ls -lh /tmp/clientchunks
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-client-chunk-00
+          path: /tmp/clientchunks/clientpack.tar.zst.part-00
+          compression-level: 0
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-client-chunk-01
+          path: /tmp/clientchunks/clientpack.tar.zst.part-01
+          compression-level: 0
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-client-chunk-02
+          path: /tmp/clientchunks/clientpack.tar.zst.part-02
+          compression-level: 0
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-client-chunk-03
+          path: /tmp/clientchunks/clientpack.tar.zst.part-03
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-client-chunk-sums
+          path: /tmp/clientchunks/SHA256SUMS.txt
+          retention-days: 1
