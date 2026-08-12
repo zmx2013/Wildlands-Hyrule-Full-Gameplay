@@ -1,0 +1,22 @@
+name: LOTM Fetch CFR
+on:
+  push:
+    branches: [ lotm-tools-temp ]
+jobs:
+  fetch-cfr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Download CFR 0.152
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 5 -o /tmp/cfr-0.152.jar https://repo1.maven.org/maven2/org/benf/cfr/0.152/cfr-0.152.jar
+          java -jar /tmp/cfr-0.152.jar --version
+          sha256sum /tmp/cfr-0.152.jar
+      - name: Upload CFR
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfr-0.152
+          path: /tmp/cfr-0.152.jar
+          retention-days: 1
